@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#eef3f6" />
+<title>HJP デジタル スケジュールボード</title>
+<style>
+  :root{
+    --bg:#eaf0f3;
+    --board:#f8fbfc;
+    --line:#8d9aa1;
+    --line-strong:#45545c;
+    --ink:#101820;
+    --panel:#ffffffee;
+    --accent:#0f6cbd;
+    --shadow:0 8px 24px rgba(0,0,0,.12);
+    --row-h:92px;
+    --header-h:58px;
+    --name-magnet-w:clamp(82px,8vw,112px);
+    --name-magnet-h:50px;
+    --status-magnet-w:clamp(70px,6.5vw,92px);
+    --status-magnet-h:54px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);font-family:"Yu Gothic UI","Meiryo",system-ui,sans-serif;color:var(--ink);overflow:hidden}
+  button,input{font:inherit}
+  button{touch-action:manipulation}
+  #app{height:100%;display:flex;flex-direction:column;gap:8px;padding:8px}
+  .topbar{display:flex;align-items:center;gap:10px;background:var(--panel);border-radius:14px;padding:8px 10px;box-shadow:var(--shadow);z-index:30}
+  .brand-logo{display:block;width:clamp(112px,13vw,190px);height:auto;flex:0 0 auto;object-fit:contain}
+  .title{font-size:clamp(20px,2.6vw,38px);font-weight:900;letter-spacing:.04em;white-space:nowrap}
+  .datebox{display:flex;align-items:center;gap:6px;margin-right:auto}
+  .datebox input{font-size:clamp(17px,2vw,28px);font-weight:800;border:1px solid #b7c3ca;border-radius:10px;padding:7px 9px;background:#fff}
+  .tool-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+  .btn{border:1px solid #aab6bd;background:#fff;border-radius:10px;padding:7px 10px;font-weight:850;box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer;min-height:40px;white-space:nowrap}
+  .btn.active{background:#102a43;color:#fff;border-color:#102a43}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.danger{background:#fff2f2;color:#9c1818;border-color:#e0abab}
+  .layout{min-height:0;flex:1;display:grid;grid-template-columns:clamp(145px,14vw,180px) minmax(0,1fr);gap:6px}
+  .tray{min-height:0;background:var(--panel);border-radius:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+  .tray-head{padding:7px 6px;border-bottom:1px solid #cbd5da;font-weight:900;font-size:15px;text-align:center}
+  .tray-actions{padding:5px;display:grid;grid-template-columns:1fr;gap:4px;border-bottom:1px solid #d5dde1}
+  .tray .btn{min-height:36px;padding:5px 4px;border-radius:8px;font-size:13px}
+  .tray-list{min-height:0;overflow:auto;padding:5px;display:flex;flex-direction:column;gap:5px}
+  .person-card{display:grid;grid-template-columns:1fr auto;gap:3px;align-items:center}
+  .name-chip,.status-chip{user-select:none;-webkit-user-select:none;touch-action:none;cursor:grab;border-radius:8px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.18);border:1px solid rgba(0,0,0,.18)}
+  .name-chip{background:linear-gradient(#fff,#edf2f5);width:var(--name-magnet-w);height:var(--name-magnet-h);min-width:var(--name-magnet-w);min-height:var(--name-magnet-h);padding:7px 8px;font-size:clamp(17px,1.7vw,25px);letter-spacing:.08em;white-space:nowrap;flex:none}
+  .status-chip{width:var(--status-magnet-w);height:var(--status-magnet-h);min-width:var(--status-magnet-w);min-height:var(--status-magnet-h);padding:9px 8px;font-size:clamp(16px,1.5vw,22px);color:#111;font-weight:900;white-space:nowrap;flex:none}
+  .status-direct,.status-return{background:#8fc6ff}
+  .status-trip{background:#ffe26a}
+  .status-floor{background:linear-gradient(#dff7df,#a9dda9);border-color:#5f9f68;color:#153f1c}
+  .name-chip:hover,.status-chip:hover,.floating-chip:hover{filter:brightness(.98);box-shadow:0 6px 14px rgba(0,0,0,.22)}
+  .tiny{border:0;background:transparent;font-size:16px;padding:4px;cursor:pointer}
+  .magnet-box{padding:5px;border-top:1px solid #cbd5da;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .floor-picker{width:100%;display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:2px}
+  .floor-picker-toggle{width:var(--status-magnet-w);min-height:42px;border:2px solid #5f9f68;border-radius:9px;background:linear-gradient(#f4fff4,#d6efd8);color:#194b20;font-weight:950;font-size:14px;cursor:pointer;touch-action:manipulation;box-shadow:0 3px 8px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;gap:4px}
+  .floor-picker-toggle::after{content:'▼';font-size:11px;transition:transform .15s}
+  .floor-picker.open .floor-picker-toggle::after{transform:rotate(180deg)}
+  .floor-picker-toggle:active{transform:scale(.97)}
+  .floor-options{display:none;width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:6px;border:1px solid #a8c8ad;border-radius:10px;background:#f3fbf4;box-shadow:0 5px 14px rgba(0,0,0,.14)}
+  .floor-picker.open .floor-options{display:grid}
+  .floor-options .status-chip{width:100%;min-width:0;height:46px;min-height:46px;font-size:18px}
+  .floor-options .status-chip:last-child{grid-column:1 / -1;width:50%;justify-self:center}
+  .floor-hint{font-size:11px;font-weight:800;color:#52705a;text-align:center;line-height:1.25}
+  .board-wrap{min-width:0;min-height:0;background:var(--board);border-radius:14px;box-shadow:var(--shadow);overflow:auto;position:relative}
+  .board{min-width:760px;padding:10px 14px 18px}
+  .board-title{position:relative;border-bottom:3px solid var(--line-strong);padding:4px 8px 8px;background:var(--board);cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;transition:background .16s,border-color .16s,color .16s,box-shadow .16s}
+  .board-title .main{text-align:center;font-weight:950;font-size:clamp(24px,3vw,42px);letter-spacing:.06em}
+  .board-title::after{content:"上部中央の消しゴム、または見出しをタップして切替";display:block;text-align:center;margin-top:1px;font-size:11px;font-weight:800;letter-spacing:.02em;color:#66757d}
+  .board-title.erase-mode{background:#fff0d8;border-color:#e06c00;color:#9a3f00;box-shadow:inset 0 0 0 3px rgba(224,108,0,.2)}
+  .board-title.erase-mode::after{content:"消しゴム使用中｜見出しまたは消しゴムをタップして手書きへ戻る";color:#b34700}
+
+  .eraser-mode-mark{position:relative;flex:0 0 auto;width:132px;height:54px;margin-left:18px;margin-right:auto;border:3px solid #9a3f00;border-radius:12px;background:linear-gradient(to bottom,#ffd28a 0 45%,#343b40 45% 100%);box-shadow:0 4px 12px rgba(0,0,0,.28),0 0 0 5px rgba(255,138,31,.16);display:flex;align-items:flex-start;justify-content:center;padding-top:4px;color:#6f2c00;font-size:16px;font-weight:950;letter-spacing:.04em;cursor:pointer;touch-action:manipulation;z-index:4;transition:transform .12s,box-shadow .12s,outline-color .12s}
+  .eraser-mode-mark::before{content:"タップで切替";position:absolute;left:0;right:0;top:-17px;text-align:center;color:#9a3f00;font-size:11px;line-height:1;font-weight:950;white-space:nowrap}
+  .eraser-mode-mark::after{content:"消しゴム";position:absolute;left:0;right:0;bottom:4px;text-align:center;color:#fff;font-size:15px;line-height:1;font-weight:950;text-shadow:0 1px 2px rgba(0,0,0,.65)}
+  .eraser-mode-mark:active{transform:scale(.95)}
+  .eraser-mode-mark.active{outline:5px solid #ff7a00;outline-offset:3px;background:linear-gradient(to bottom,#ffbd54 0 45%,#d85b00 45% 100%);box-shadow:0 0 0 9px rgba(255,122,0,.24),0 5px 16px rgba(0,0,0,.34)}
+  .eraser-mode-mark.active::before{content:"消しゴム使用中";color:#c34700}
+  .board-surface{position:relative}
+  .headers{display:grid;grid-template-columns:20% 1fr 18%;background:var(--board);border-bottom:2px solid var(--line-strong);font-size:clamp(16px,1.7vw,25px);font-weight:900;text-align:center;min-height:var(--header-h)}
+  .headers>div{padding:8px 4px;border-right:2px solid var(--line-strong);display:flex;align-items:center;justify-content:center}
+  .headers>div:last-child{border-right:0}
+  .rows{position:relative}
+  .row{display:grid;grid-template-columns:20% 1fr 18%;min-height:var(--row-h);border-bottom:1.5px solid var(--line);position:relative;background:#fbfdfe}
+  .cell{position:relative;border-right:2px solid var(--line-strong);min-height:var(--row-h)}
+  .cell:last-child{border-right:0}
+  .drawing-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:6;touch-action:none;pointer-events:auto}
+  .floating-layer{position:absolute;inset:0;z-index:12;pointer-events:none}
+  .floating-chip{position:absolute;pointer-events:auto;touch-action:none;cursor:grab}
+  .ghost{position:fixed;z-index:9999;pointer-events:none;opacity:.9;transform:scale(1.06);box-shadow:0 10px 24px rgba(0,0,0,.28)}
+  .empty{color:#78868e;font-size:14px;padding:8px}
+  .modal{position:fixed;inset:0;background:#0d1b2a88;display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+  .modal.show{display:flex}
+  .dialog{width:min(560px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.3);padding:18px}
+  .dialog h2{margin:0 0 14px}
+  .field{display:flex;flex-direction:column;gap:5px;margin:10px 0}
+  .field input{font-size:20px;padding:10px;border:1px solid #adb9c0;border-radius:9px}
+  .dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#132f4c;color:#fff;padding:10px 16px;border-radius:999px;box-shadow:var(--shadow);z-index:200;opacity:0;pointer-events:none;transition:.2s}
+  .toast.show{opacity:1}
+  .sync-badge{display:inline-flex;align-items:center;justify-content:center;min-width:84px;min-height:36px;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:900;white-space:nowrap;border:1px solid #b6c2c8;background:#f3f6f8;color:#33434c}
+  .sync-badge.ok{background:#e8f7ec;color:#176b32;border-color:#9dd4aa}
+  .sync-badge.saving,.sync-badge.loading{background:#fff7d6;color:#765b00;border-color:#ddc86b}
+  .sync-badge.error{background:#fff0f0;color:#a11d1d;border-color:#e2aaaa}
+  .board-surface .drawing-canvas{cursor:crosshair}
+  .board-surface.erase-mode{outline:4px solid rgba(224,108,0,.62);outline-offset:-4px}
+  .board-surface.erase-mode .drawing-canvas{cursor:none}
+  .mode-banner{display:none;position:sticky;top:0;left:0;right:0;z-index:18;margin:0 auto;width:max-content;max-width:calc(100% - 24px);padding:7px 16px;border-radius:0 0 12px 12px;background:#d85b00;color:#fff;font-size:14px;font-weight:950;letter-spacing:.04em;box-shadow:0 4px 12px rgba(0,0,0,.22);pointer-events:none}
+  .mode-banner.show{display:block}
+  .eraser-cursor{display:none;position:absolute;z-index:17;width:58px;height:58px;border:3px solid #e05f00;border-radius:50%;background:rgba(255,145,42,.17);box-shadow:0 0 0 3px rgba(255,255,255,.86),0 3px 10px rgba(0,0,0,.2);pointer-events:none;transform:translate(-50%,-50%)}
+  .eraser-cursor.show{display:block}
+  .mobile-view-badge{display:none;align-items:center;justify-content:center;min-height:36px;padding:6px 10px;border-radius:999px;background:#e8f3ff;color:#155a91;border:1px solid #8bb9df;font-size:13px;font-weight:950;white-space:nowrap}
+  body.mobile-view-only .mobile-view-badge{display:inline-flex}
+  body.mobile-view-only .eraser-mode-mark,
+  body.mobile-view-only #undoBtn,
+  body.mobile-view-only #clearDrawingBtn,
+  body.mobile-view-only .tray,
+  body.mobile-view-only .tiny{display:none!important}
+  body.mobile-view-only #app{gap:5px;padding:5px}
+  body.mobile-view-only .topbar{min-height:48px;padding:5px 7px;border-radius:10px;gap:5px;flex-wrap:nowrap}
+  body.mobile-view-only .topbar>.title{display:none!important}
+  body.mobile-view-only .brand-logo{width:110px;max-height:32px}
+  body.mobile-view-only .tool-group{width:100%;display:flex;justify-content:flex-end;gap:5px;flex-wrap:nowrap}
+  body.mobile-view-only .mobile-view-badge{margin-right:auto;min-height:34px;padding:5px 9px;font-size:12px}
+  body.mobile-view-only .sync-badge{min-width:64px;min-height:34px;padding:5px 7px;font-size:11px}
+  body.mobile-view-only #fullBtn{min-height:34px;padding:5px 8px;font-size:0;border-radius:8px}
+  body.mobile-view-only #fullBtn::before{content:"⛶";font-size:21px;line-height:1}
+  body.mobile-view-only .layout{display:block;min-height:0;width:100%}
+  body.mobile-view-only .board-wrap{width:100%;height:100%;border-radius:10px;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain;scrollbar-width:thin}
+  body.mobile-view-only .board{min-width:820px;padding:5px 7px 14px}
+  body.mobile-view-only .board-title{cursor:default;touch-action:auto;padding:2px 4px 6px}
+  body.mobile-view-only .board-title .main{font-size:25px}
+  body.mobile-view-only .board-title::after{content:"閲覧専用｜指で上下左右に移動";display:block;font-size:12px;padding-top:3px}
+  body.mobile-view-only .headers{font-size:17px;min-height:48px}
+  body.mobile-view-only .drawing-canvas{pointer-events:none!important;touch-action:auto!important;cursor:default!important}
+  body.mobile-view-only .floating-chip{pointer-events:none!important;touch-action:auto!important;cursor:default!important}
+  body.mobile-view-only .mode-banner,
+  body.mobile-view-only .eraser-cursor{display:none!important}
+  @media (orientation:landscape){
+    body.mobile-view-only #app{padding:3px}
+    body.mobile-view-only .topbar{min-height:42px;padding:3px 6px}
+    body.mobile-view-only .mobile-view-badge,
+    body.mobile-view-only .sync-badge{min-height:30px}
+    body.mobile-view-only #fullBtn{min-height:30px}
+    body.mobile-view-only .board{min-width:900px}
+    body.mobile-view-only .board-title .main{font-size:22px}
+  }
+  @media (max-width:900px){
+    .brand-logo{width:104px}
+    .layout{grid-template-columns:140px minmax(0,1fr)}
+    .title{font-size:clamp(17px,3.5vw,24px)}
+    .topbar{align-items:center;gap:6px}
+    .eraser-mode-mark{width:112px;height:48px;margin-left:8px;font-size:14px}
+    .tool-group{gap:4px}
+    .sync-badge{min-width:70px;padding:5px 7px;font-size:12px}
+    .tool-group{gap:4px}
+    .btn{padding:7px 8px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <img class="brand-logo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNzAgNDciIHdpZHRoPSIxNzAiIGhlaWdodD0iNDciIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iSElST1ggSkFQQU4iPjxwYXRoIGZpbGw9IiMwMDQwOTciIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTE1OCwzNSBMMTU4LDQxIEwxNTksNDEgTDE1OSw0MCBMMTYwLDM5IEwxNjEsNDAgTDE2MSw0MSBMMTYzLDQxIEwxNjMsMzUgTDE2MiwzNSBMMTYyLDM2IEwxNjEsMzcgTDE1OSwzNVogTTE1MSwzNSBMMTUwLDM2IEwxNTAsMzggTDE0OSwzOSBMMTQ5LDQxIEwxNTAsNDEgTDE1MSw0MCBMMTUyLDQwIEwxNTMsNDEgTDE1NSw0MSBMMTUzLDM1WiBNMTQ2LDM1IEwxNDIsMzUgTDE0Miw0MSBMMTQzLDQxIEwxNDMsNDAgTDE0NCwzOSBMMTQ2LDM5Wk0xNDMsMzcgTDE0NCwzNiBMMTQ1LDM3IEwxNDQsMzhaIE0xMzUsMzUgTDEzNCwzNiBMMTM0LDM4IEwxMzMsMzkgTDEzMyw0MSBMMTM0LDQxIEwxMzUsNDAgTDEzNiw0MCBMMTM3LDQxIEwxMzksNDEgTDEzNywzNVogTTEzMCwzNSBMMTI5LDM1IEwxMjksMzkgTDEyOCw0MCBMMTI3LDM5IEwxMjYsMzkgTDEyNiw0MSBMMTMwLDQxWiBNNDQsMTggTDQ0LDMwIEw0NSwzMSBMNDksMzEgTDUwLDMwIEw1MCwxOFogTTEyNSwxNCBMMTI1LDE4IEwxMjYsMTggTDEyOSwyMCBMMTMxLDIwIEwxMzQsMjIgTDEzMywyMyBMMTMxLDIzIEwxMjgsMjUgTDEyNiwyNSBMMTI1LDI2IEwxMjQsMjYgTDEyMywyNyBMMTIzLDI5IEwxMjQsMzAgTDEyNCwzMSBMMTI5LDMxIEwxMzAsMzAgTDEzMiwzMCBMMTM1LDI4IEwxMzcsMjggTDEzOCwyNyBMMTM5LDI3IEwxNDAsMjYgTDE0MiwyNiBMMTQzLDI1IEwxNDQsMjUgTDE0NywyNyBMMTQ5LDI3IEwxNTIsMjkgTDE1NCwyOSBMMTU1LDMwIEwxNTcsMzAgTDE2MCwzMiBMMTYzLDMxIEwxNjMsMjYgTDE2MiwyNiBMMTYxLDI1IEwxNTksMjUgTDE1OCwyNCBMMTU3LDI0IEwxNTYsMjMgTDE1NCwyMyBMMTUzLDIyIEwxNTgsMTkgTDE2MCwxOSBMMTYxLDE4IEwxNjIsMTggTDE2MiwxNCBMMTYxLDEzIEwxNTcsMTMgTDE1NiwxNCBMMTU0LDE0IEwxNTEsMTYgTDE0OSwxNiBMMTQ4LDE3IEwxNDYsMTcgTDE0NSwxOCBMMTQxLDE4IEwxMzgsMTYgTDEzNiwxNiBMMTM1LDE1IEwxMzQsMTUgTDEzMywxNCBMMTMxLDE0IEwxMzAsMTMgTDEyNiwxM1ogTTg4LDE5IEw4OCwyNSBMOTIsMjkgTDk0LDI5IEw5NSwzMCBMOTcsMzAgTDk4LDMxIEwxMTIsMzEgTDExMywzMCBMMTE1LDMwIEwxMTYsMjkgTDExOSwyOCBMMTIxLDI2IEwxMjEsMjUgTDEyMiwyNCBMMTIyLDIwIEwxMjEsMTkgTDEyMSwxOCBMMTE5LDE2IEwxMTgsMTYgTDExNSwxNCBMMTEzLDE0IEwxMTIsMTMgTDk3LDEzIEw5NiwxNCBMOTQsMTQgTDkzLDE1IEw5MiwxNVpNOTQsMjMgTDk0LDIxIEw5NiwxOSBMOTcsMTkgTDk4LDE4IEwxMDAsMTggTDEwMSwxNyBMMTA5LDE3IEwxMTAsMTggTDExMiwxOCBMMTEzLDE5IEwxMTQsMTkgTDExNiwyMiBMMTEzLDI1IEwxMTIsMjUgTDExMSwyNiBMMTA3LDI2IEwxMDYsMjcgTDEwNCwyNyBMMTAzLDI2IEw5OSwyNlogTTU0LDEzIEw1NCwzMCBMNTUsMzEgTDU5LDMxIEw2MCwzMCBMNjAsMTkgTDYxLDE4IEw3NywxOCBMNzgsMTkgTDc4LDIxIEw3NywyMiBMNjUsMjIgTDYzLDI0IEw2MywyNyBMNjQsMjggTDY1LDI4IEw2NiwyOSBMNjcsMjkgTDY4LDMwIEw2OSwzMCBMNzAsMzEgTDcxLDMxIEw3MiwzMiBMNzMsMzIgTDc0LDMzIEw3NSwzMyBMNzYsMzQgTDc3LDM0IEw3OCwzNSBMNzksMzUgTDgwLDM2IEw4MSwzNiBMODIsMzcgTDgzLDM3IEw4NCwzOCBMODUsMzggTDkwLDQxIEw5Myw0MSBMOTQsNDAgTDk0LDM2IEw5MywzNSBMOTIsMzUgTDkxLDM0IEw5MCwzNCBMODUsMzEgTDgzLDMxIEw3OCwyOCBMNzksMjcgTDgxLDI3IEw4MiwyNiBMODMsMjYgTDgzLDI1IEw4NCwyNCBMODQsMjIgTDg1LDIxIEw4NSwxOSBMODQsMTggTDg0LDE2IEw4MSwxM1ogTTksMTQgTDksMzAgTDEwLDMxIEwxNCwzMSBMMTUsMzAgTDE1LDI2IEwxNiwyNSBMMzIsMjUgTDMzLDI2IEwzMywyOSBMMzQsMzAgTDM0LDMxIEwzOSwzMSBMNDAsMzAgTDQwLDE0IEwzOSwxMyBMMzQsMTMgTDM0LDE0IEwzMywxNSBMMzMsMTggTDMyLDE5IEwxNiwxOSBMMTUsMTggTDE1LDE0IEwxNCwxMyBMMTAsMTNaIE00MywxMiBMNDMsMTQgTDQ0LDE1IEw1MSwxNSBMNTEsMTIgTDUwLDExIEw0NCwxMVoiLz48L3N2Zz4=" alt="HIROX JAPAN" />
+    <div class="title">SCHEDULE BOARD</div>
+    <div id="eraserModeMark" class="eraser-mode-mark" role="button" tabindex="0" aria-pressed="false" aria-label="消しゴムモードに切り替える">黒板消し</div>
+    <span id="mobileViewBadge" class="mobile-view-badge">閲覧専用・指で移動</span>
+    <div class="tool-group" aria-label="操作メニュー">
+      <button class="btn" id="undoBtn" title="1つ前の手書きを戻す" aria-label="戻す">↶ 戻す</button>
+      <button class="btn danger" id="clearDrawingBtn" title="手書きをすべて消去" aria-label="手書きを全消去">🗑 全消去</button>
+      <span id="syncBadge" class="sync-badge" title="接続状況。タップで再接続">● 接続</span>
+      <button class="btn primary" id="fullBtn" title="全画面表示" aria-label="全画面表示">⛶ 全画面</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="tray">
+      <div class="tray-head">氏名マグネット</div>
+      <div class="tray-actions">
+        <button class="btn" id="addPersonBtn">＋ 氏名追加</button>
+        <button class="btn" id="resetPeopleBtn">氏名を戻す</button>
+      </div>
+      <div id="peopleList" class="tray-list"></div>
+      <div class="magnet-box">
+        <div class="status-chip status-direct" data-type="status" data-value="直行">直行</div>
+        <div class="status-chip status-return" data-type="status" data-value="直帰">直帰</div>
+        <div class="status-chip status-return" data-type="status" data-value="帰宅">帰宅</div>
+        <div class="status-chip status-return" data-type="status" data-value="休み">休み</div>
+        <div class="status-chip status-trip" data-type="status" data-value="出張">出張</div>
+        <div id="floorPicker" class="floor-picker">
+          <button id="floorPickerToggle" class="floor-picker-toggle" type="button" aria-expanded="false">階を選ぶ</button>
+          <div id="floorOptions" class="floor-options" aria-label="階マグネット">
+            <div class="status-chip status-floor" data-type="status" data-value="1F">1F</div>
+            <div class="status-chip status-floor" data-type="status" data-value="3F">3F</div>
+            <div class="status-chip status-floor" data-type="status" data-value="4F">4F</div>
+            <div class="status-chip status-floor" data-type="status" data-value="5F">5F</div>
+            <div class="status-chip status-floor" data-type="status" data-value="6F">6F</div>
+            <div class="floor-hint">必要な時だけ展開します</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="board-wrap">
+      <div class="board">
+        <div id="modeToggle" class="board-title" role="switch" tabindex="0" aria-checked="false" aria-label="手書きと消しゴムを切り替える"><div id="modeTitle" class="main">SCHEDULE BOARD</div></div>
+        <div id="boardSurface" class="board-surface">
+          <div class="headers"><div>氏 名</div><div>行 先</div><div>帰社時間</div></div>
+          <div id="rows" class="rows"></div>
+          <canvas id="drawingCanvas" class="drawing-canvas"></canvas>
+          <div id="floatingLayer" class="floating-layer"></div>
+          <div id="modeBanner" class="mode-banner">消しゴム使用中　なぞった部分を消去します</div>
+          <div id="eraserCursor" class="eraser-cursor" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="personModal">
+  <div class="dialog">
+    <h2>氏名マグネットを追加</h2>
+    <div class="field"><label for="personName">表示名（2～3文字推奨）</label><input id="personName" maxlength="10" placeholder="例：田中"></div>
+    <div class="dialog-actions"><button class="btn" data-close>キャンセル</button><button class="btn primary" id="savePersonBtn">追加</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* GASをウェブアプリとしてデプロイ後、発行URLに置き換えてください。 */
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbym0wBqNYB8i12E07gxFImdM3loCMdK-2cP6LZSX0vNVMJokAD-jfFpIu_5oV09zikX/exec';
+  const API_TOKEN = 'hirox_hjp';
+  const ROW_COUNT = 16;
+  const CACHE_KEY = 'hjp_schedule_board_shared_cache_server_first_v1';
+  const PEN_WIDTH = 5;
+  const ERASER_WIDTH = 58;
+  const POLL_INTERVAL_MS = 2000;
+  const SAVE_DEBOUNCE_MS = 160;
+  const REQUEST_TIMEOUT_MS = 7000;
+  const ACK_POLL_MS = 120;
+  const MOBILE_VIEW_ONLY = (() => {
+    const uaMobile = navigator.userAgentData ? navigator.userAgentData.mobile : /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent);
+    const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : ('ontouchstart' in window);
+    const shortSide = Math.min(window.screen?.width || innerWidth, window.screen?.height || innerHeight);
+    return Boolean(uaMobile && coarse && shortSide <= 820);
+  })();
+
+  const $ = s => document.querySelector(s);
+  const rowsEl = $('#rows');
+  const peopleList = $('#peopleList');
+  const modal = $('#personModal');
+  const boardSurface = $('#boardSurface');
+  const drawingCanvas = $('#drawingCanvas');
+  const floatingLayer = $('#floatingLayer');
+  const syncBadge = $('#syncBadge');
+  const floorPicker = $('#floorPicker');
+  const floorPickerToggle = $('#floorPickerToggle');
+  const modeToggle = $('#modeToggle');
+  const modeTitle = $('#modeTitle');
+  const modeBanner = $('#modeBanner');
+  const eraserCursor = $('#eraserCursor');
+  const eraserModeMark = $('#eraserModeMark');
+
+  if(MOBILE_VIEW_ONLY){
+    document.body.classList.add('mobile-view-only');
+    document.documentElement.classList.add('mobile-view-only');
+  }
+
+  const cachedFallbackState = loadCachedState();
+  let state = defaultState();
+  let revision = 0;
+  let remoteReady = false;
+  let drawingMode = 'pen';
+  let drag = null;
+  let activeStroke = null;
+  let saveTimer = null;
+  let pollTimer = null;
+  let isDirty = false;
+  let saveInFlight = false;
+  let loadInFlight = false;
+  let lastSavedPayload = '';
+  let clientId = getClientId();
+
+  function emptyDay(){
+    return { strokes:[], magnets:[] };
+  }
+
+  function defaultState(){
+    return { people:[], days:{ board:emptyDay() } };
+  }
+
+  function normalizeState(value){
+    const safe = value && typeof value === 'object' ? value : defaultState();
+    if(!Array.isArray(safe.people)) safe.people = [];
+    if(!safe.days || typeof safe.days !== 'object') safe.days = {};
+    if(!safe.days.board || typeof safe.days.board !== 'object') safe.days.board = emptyDay();
+    if(!Array.isArray(safe.days.board.magnets)) safe.days.board.magnets = [];
+    if(!Array.isArray(safe.days.board.strokes)) safe.days.board.strokes = [];
+    if('drawing' in safe.days.board) delete safe.days.board.drawing;
+    return safe;
+  }
+
+  function loadCachedState(){
+    try{
+      return normalizeState(JSON.parse(localStorage.getItem(CACHE_KEY)));
+    }catch(e){
+      return defaultState();
+    }
+  }
+
+  function cacheState(){
+    try{
+      localStorage.setItem(CACHE_KEY, JSON.stringify(state));
+    }catch(e){
+      console.warn('ローカル予備キャッシュの保存に失敗しました。', e);
+    }
+  }
+
+
+  function clearLegacySharedCaches(){
+    try{
+      const removeKeys=[];
+      for(let i=0;i<localStorage.length;i++){
+        const key=localStorage.key(i);
+        if(key && key.startsWith('hjp_schedule_board_shared_cache_') && key!==CACHE_KEY){
+          removeKeys.push(key);
+        }
+      }
+      removeKeys.forEach(key=>localStorage.removeItem(key));
+    }catch(e){
+      console.warn('旧キャッシュの削除に失敗しました。', e);
+    }
+  }
+
+  function getClientId(){
+    const key = 'hjp_schedule_board_client_id';
+    let id = localStorage.getItem(key);
+    if(!id){
+      id = 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,10);
+      localStorage.setItem(key, id);
+    }
+    return id;
+  }
+
+  function isGasConfigured(){
+    return /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(?:\?.*)?$/.test(GAS_URL);
+  }
+
+  function clamp01(value){
+    return Math.max(0, Math.min(1, Number(value) || 0));
+  }
+
+  function coordinateModeOf(m){
+    return m && m.coordinateMode === 'centerRatio' ? 'centerRatio' :
+      (m && m.coordinateMode === 'boardRatio' ? 'boardRatio' :
+      (m && m.coordinateMode === 'ratio' ? 'legacyRatio' : 'pixel'));
+  }
+
+  /*
+   * centerRatio はマグネットの中心位置をボード全体に対する比率で保持します。
+   * 全画面切替でマグネットの表示幅が変わっても中心が動かないため、
+   * 手書きとの位置関係を安定して維持できます。
+   */
+  function magnetDisplayPosition(m, el, boardRectOverride=null){
+    const boardRect = boardRectOverride || boardSurface.getBoundingClientRect();
+    const width = el ? el.offsetWidth : 0;
+    const height = el ? el.offsetHeight : 0;
+    const maxX = Math.max(0, boardRect.width - width);
+    const maxY = Math.max(0, boardRect.height - height);
+    const mode = coordinateModeOf(m);
+    let x;
+    let y;
+    if(mode === 'centerRatio'){
+      x = clamp01(m.x) * boardRect.width - width / 2;
+      y = clamp01(m.y) * boardRect.height - height / 2;
+    }else if(mode === 'boardRatio'){
+      x = clamp01(m.x) * boardRect.width;
+      y = clamp01(m.y) * boardRect.height;
+    }else if(mode === 'legacyRatio'){
+      x = clamp01(m.x) * maxX;
+      y = clamp01(m.y) * maxY;
+    }else{
+      x = Number(m.x) || 0;
+      y = Number(m.y) || 0;
+    }
+    return {x:Math.max(0, Math.min(x, maxX)), y:Math.max(0, Math.min(y, maxY))};
+  }
+
+  function migrateMagnetsToCenterRatioOnce(){
+    state = normalizeState(state);
+    if(state.coordinateVersion === 3) return false;
+    const rect = boardSurface.getBoundingClientRect();
+    if(rect.width < 1 || rect.height < 1) return false;
+    let changed = false;
+    day().magnets.forEach(m=>{
+      if(coordinateModeOf(m) === 'centerRatio') return;
+      const probe=document.createElement('div');
+      probe.className = m.kind==='person'
+        ? 'floating-chip name-chip'
+        : `floating-chip status-chip ${statusClassForValue(m.value)}`;
+      probe.style.position='absolute';
+      probe.style.visibility='hidden';
+      probe.textContent = m.kind==='person'
+        ? (state.people.find(x=>x.id===m.personId)?.name || '')
+        : (m.value || '');
+      floatingLayer.appendChild(probe);
+      const pos=magnetDisplayPosition(m,probe,rect);
+      const centerX=pos.x + probe.offsetWidth/2;
+      const centerY=pos.y + probe.offsetHeight/2;
+      probe.remove();
+      m.x=Number((centerX/Math.max(1,rect.width)).toFixed(6));
+      m.y=Number((centerY/Math.max(1,rect.height)).toFixed(6));
+      m.coordinateMode='centerRatio';
+      changed=true;
+    });
+    state.coordinateVersion=3;
+    return changed;
+  }
+
+  function setSyncStatus(type, text){
+    if(!syncBadge) return;
+    syncBadge.className = 'sync-badge ' + type;
+    syncBadge.textContent = text;
+  }
+
+  function day(){
+    state = normalizeState(state);
+    return state.days.board;
+  }
+
+  function toast(msg){
+    const t=$('#toast');
+    t.textContent=msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),1500);
+  }
+
+  function markChanged(delayMs = SAVE_DEBOUNCE_MS){
+    if(MOBILE_VIEW_ONLY) return;
+    isDirty = true;
+    cacheState();
+    if(!remoteReady){
+      setSyncStatus('loading', '最新データ確認中');
+      return;
+    }
+    setSyncStatus('saving', '未同期');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveRemote, delayMs);
+  }
+
+  function compactState(){
+    const src = normalizeState(state);
+    return {
+      coordinateVersion:Number(src.coordinateVersion || 0),
+      people: src.people.map(p => ({id:String(p.id), name:String(p.name)})),
+      days: {board: {
+        magnets: src.days.board.magnets.map(m => {
+          const mode = coordinateModeOf(m);
+          return {
+            id:String(m.id), kind:String(m.kind),
+            ...(m.personId ? {personId:String(m.personId)} : {}),
+            ...(m.value ? {value:String(m.value)} : {}),
+            x:mode === 'pixel' ? Math.round(Number(m.x)||0) : Number(clamp01(m.x).toFixed(6)),
+            y:mode === 'pixel' ? Math.round(Number(m.y)||0) : Number(clamp01(m.y).toFixed(6)),
+            ...(mode === 'centerRatio' ? {coordinateMode:'centerRatio'} : {}),
+            ...(mode === 'boardRatio' ? {coordinateMode:'boardRatio'} : {}),
+            ...(mode === 'legacyRatio' ? {coordinateMode:'ratio'} : {})
+          };
+        }),
+        strokes: src.days.board.strokes.map(st => ({
+          tool:st.tool === 'erase' ? 'erase' : 'pen',
+          width:Math.round(Number(st.width)||PEN_WIDTH),
+          points:(st.points||[]).map(pt => [Number(Number(pt[0]).toFixed(4)), Number(Number(pt[1]).toFixed(4))])
+        }))
+      }}
+    };
+  }
+
+  function stablePayload(){
+    return JSON.stringify(compactState());
+  }
+
+  function jsonp(params, timeoutMs = REQUEST_TIMEOUT_MS){
+    return new Promise((resolve, reject) => {
+      if(!isGasConfigured()){
+        reject(new Error('GAS_URL_NOT_CONFIGURED'));
+        return;
+      }
+      const callbackName = '__hjpJsonp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const script = document.createElement('script');
+      const timer = setTimeout(() => finish(new Error('timeout')), timeoutMs);
+      let done = false;
+
+      function finish(error, data){
+        if(done) return;
+        done = true;
+        clearTimeout(timer);
+        try{ delete window[callbackName]; }catch(e){ window[callbackName] = undefined; }
+        script.remove();
+        error ? reject(error) : resolve(data);
+      }
+
+      window[callbackName] = data => finish(null, data);
+      script.onerror = () => finish(new Error('network'));
+      const query = new URLSearchParams({ ...params, token:API_TOKEN, callback:callbackName, _:Date.now().toString() });
+      script.src = GAS_URL + (GAS_URL.includes('?') ? '&' : '?') + query.toString();
+      document.head.appendChild(script);
+    });
+  }
+
+  function postByHiddenForm(fields){
+    return new Promise((resolve, reject) => {
+      if(!isGasConfigured()) return reject(new Error('GAS_URL_NOT_CONFIGURED'));
+      const iframeName = 'syncFrame_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.display = 'none';
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GAS_URL;
+      form.target = iframeName;
+      form.style.display = 'none';
+      Object.entries(fields).forEach(([name,value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = name; input.value = String(value ?? '');
+        form.appendChild(input);
+      });
+      document.body.append(iframe, form);
+      try{
+        form.submit();
+        setTimeout(resolve, 60);
+      }catch(err){
+        reject(err);
+      }
+      setTimeout(() => { form.remove(); iframe.remove(); }, 12000);
+    });
+  }
+
+  async function waitForAck(requestId){
+    const deadline = Date.now() + REQUEST_TIMEOUT_MS;
+    await new Promise(r => setTimeout(r, ACK_POLL_MS));
+    while(Date.now() < deadline){
+      const res = await jsonp({action:'ack', requestId}, 4500);
+      if(res && res.pending){
+        await new Promise(r => setTimeout(r, ACK_POLL_MS));
+        continue;
+      }
+      return res;
+    }
+    throw new Error('ack_timeout');
+  }
+
+  async function saveRemote(){
+    if(MOBILE_VIEW_ONLY || !remoteReady) return;
+    if(saveInFlight || !isDirty) return;
+    if(!isGasConfigured()){
+      setSyncStatus('error', 'GAS URL未設定');
+      return;
+    }
+
+    const payload = stablePayload();
+    if(payload === lastSavedPayload){
+      isDirty = false;
+      setSyncStatus('ok', '同期済み');
+      return;
+    }
+
+    saveInFlight = true;
+    setSyncStatus('saving', '同期中…');
+    const requestId = clientId + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+    try{
+      await postByHiddenForm({ action:'save', token:API_TOKEN, requestId, clientId, revision, payload });
+      const ack = await waitForAck(requestId);
+      if(!ack || !ack.ok) throw new Error(ack && ack.error ? ack.error : 'save_failed');
+      revision = Number(ack.revision || revision + 1);
+      lastSavedPayload = payload;
+      isDirty = stablePayload() !== payload;
+      cacheState();
+      setSyncStatus(isDirty ? 'saving' : 'ok', isDirty ? '未同期' : '同期済み');
+    }catch(e){
+      console.error('保存エラー', e);
+      setSyncStatus('error', '同期失敗');
+      toast('同期に失敗しました。通信状態を確認してください。');
+    }finally{
+      saveInFlight = false;
+      if(isDirty){
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveRemote, 900);
+      }
+    }
+  }
+
+  async function loadRemote({initial=false} = {}){
+    if(loadInFlight || saveInFlight || drag || activeStroke || (isDirty && remoteReady)) return;
+    if(!isGasConfigured()){
+      setSyncStatus('error', 'GAS URL未設定');
+      return;
+    }
+    loadInFlight = true;
+    if(initial) setSyncStatus('loading', '同期確認中…');
+    try{
+      const res = await jsonp({action:'load', clientId, since:initial ? -1 : revision}, REQUEST_TIMEOUT_MS);
+      if(!res || !res.ok) throw new Error(res && res.error ? res.error : 'load_failed');
+      const remoteRevision = Number(res.revision || 0);
+
+      if(res.notModified){
+        remoteReady = true;
+        isDirty = false;
+        setSyncStatus('ok', '同期済み');
+        return;
+      }
+
+      if(res.state && (initial || remoteRevision > revision)){
+        state = normalizeState(res.state);
+        revision = remoteRevision;
+        remoteReady = true;
+        isDirty = false;
+        lastSavedPayload = stablePayload();
+        cacheState();
+        render();
+        requestAnimationFrame(()=>{
+          if(!MOBILE_VIEW_ONLY && migrateMagnetsToCenterRatioOnce()){
+            renderFloating();
+            markChanged(300);
+          }
+        });
+      }else if(initial && !res.state){
+        state = defaultState();
+        revision = remoteRevision;
+        remoteReady = true;
+        isDirty = false;
+        lastSavedPayload = stablePayload();
+        cacheState();
+        render();
+      }
+      setSyncStatus('ok', '同期済み');
+    }catch(e){
+      console.error('読み込みエラー', e);
+      setSyncStatus('error', '再試行待ち');
+      if(initial){
+        state = normalizeState(cachedFallbackState);
+        remoteReady = false;
+        isDirty = false;
+        render();
+        setSyncStatus('error', 'キャッシュ閲覧中');
+        toast('通信できないため端末内の参考データを表示しています。サーバーへは送信しません。');
+      }
+    }finally{
+      loadInFlight = false;
+    }
+  }
+
+  function placedPersonIds(){
+    return new Set(day().magnets.filter(m=>m.kind==='person').map(m=>m.personId));
+  }
+
+  function renderPeople(){
+    const placed = placedPersonIds();
+    peopleList.innerHTML='';
+    const free = state.people.filter(p=>!placed.has(p.id));
+    if(!free.length) peopleList.innerHTML='<div class="empty">氏名マグネットは未登録です。［＋ 氏名追加］から追加してください。</div>';
+    free.forEach(p=>{
+      const row=document.createElement('div');
+      row.className='person-card';
+      const chip=document.createElement('div');
+      chip.className='name-chip';
+      chip.textContent=p.name;
+      chip.dataset.type='person';
+      chip.dataset.id=p.id;
+      const del=document.createElement('button');
+      del.className='tiny';
+      del.textContent='⋮';
+      del.title='削除';
+      del.onclick=()=>{
+        if(confirm(`${p.name} を氏名一覧から削除しますか？`)){
+          state.people = state.people.filter(x=>x.id!==p.id);
+          Object.values(state.days).forEach(d=>{ if(Array.isArray(d.magnets)) d.magnets = d.magnets.filter(m=>m.personId!==p.id); });
+          markChanged();
+          render();
+        }
+      };
+      row.append(chip, del);
+      peopleList.append(row);
+      attachTrayDrag(chip);
+    });
+  }
+
+  function renderRows(){
+    rowsEl.innerHTML='';
+    for(let i=0;i<ROW_COUNT;i++){
+      const row=document.createElement('div');
+      row.className='row';
+      row.innerHTML='<div class="cell"></div><div class="cell"></div><div class="cell"></div>';
+      rowsEl.append(row);
+    }
+  }
+
+  function statusClassForValue(value){
+    if(value === '出張') return 'status-trip';
+    if(['1F','3F','4F','5F','6F'].includes(value)) return 'status-floor';
+    return 'status-direct';
+  }
+
+  function renderFloating(){
+    floatingLayer.innerHTML='';
+    day().magnets.forEach(m=>{
+      const el=document.createElement('div');
+      const className = m.kind==='person'
+        ? 'floating-chip name-chip'
+        : `floating-chip status-chip ${statusClassForValue(m.value)}`;
+      el.className = className;
+      el.style.visibility = 'hidden';
+      el.dataset.magnetId = m.id;
+      if(m.kind==='person'){
+        const p = state.people.find(x=>x.id===m.personId);
+        el.textContent = p ? p.name : '';
+      } else {
+        el.textContent = m.value;
+      }
+      floatingLayer.append(el);
+      const pos = magnetDisplayPosition(m, el);
+      el.style.left = `${pos.x}px`;
+      el.style.top = `${pos.y}px`;
+      el.style.visibility = 'visible';
+      attachPlacedDrag(el);
+    });
+  }
+
+  function renderCanvas(){
+    resizeDrawingCanvas();
+    redrawDrawingFromState();
+  }
+
+  let layoutFrame1=0;
+  let layoutFrame2=0;
+  function scheduleGeometryRefresh(){
+    cancelAnimationFrame(layoutFrame1);
+    cancelAnimationFrame(layoutFrame2);
+    layoutFrame1=requestAnimationFrame(()=>{
+      layoutFrame2=requestAnimationFrame(()=>{
+        renderFloating();
+        renderCanvas();
+      });
+    });
+  }
+
+  function render(){
+    renderPeople();
+    renderRows();
+    renderFloating();
+    renderCanvas();
+  }
+
+  function configureDrawingContext(){
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    const ctx = drawingCanvas.getContext('2d');
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    return ctx;
+  }
+
+  function resizeDrawingCanvas(){
+    const rect = boardSurface.getBoundingClientRect();
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    const needW = Math.max(1, Math.round(rect.width * ratio));
+    const needH = Math.max(1, Math.round(rect.height * ratio));
+    drawingCanvas.style.width = rect.width + 'px';
+    drawingCanvas.style.height = rect.height + 'px';
+    if(drawingCanvas.width !== needW || drawingCanvas.height !== needH){
+      drawingCanvas.width = needW;
+      drawingCanvas.height = needH;
+    }
+    configureDrawingContext();
+  }
+
+  function drawStroke(ctx, stroke){
+    if(!stroke || !Array.isArray(stroke.points) || stroke.points.length < 1) return;
+    const rect = drawingCanvas.getBoundingClientRect();
+    ctx.globalCompositeOperation = stroke.tool === 'erase' ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = Number(stroke.width || (stroke.tool === 'erase' ? ERASER_WIDTH : PEN_WIDTH));
+    ctx.beginPath();
+    const first = stroke.points[0];
+    ctx.moveTo(first[0] * rect.width, first[1] * rect.height);
+    for(let i=1;i<stroke.points.length;i++){
+      const p = stroke.points[i];
+      ctx.lineTo(p[0] * rect.width, p[1] * rect.height);
+    }
+    if(stroke.points.length === 1){
+      ctx.lineTo(first[0] * rect.width + 0.8, first[1] * rect.height + 0.8);
+    }
+    ctx.stroke();
+  }
+
+  function redrawDrawingFromState(){
+    const ctx = configureDrawingContext();
+    ctx.save();
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0,0,drawingCanvas.width,drawingCanvas.height);
+    ctx.restore();
+    day().strokes.forEach(stroke => drawStroke(ctx, stroke));
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function canvasPointFromClient(clientX, clientY){
+    const rect = drawingCanvas.getBoundingClientRect();
+    return {
+      rect,
+      point:[
+        Math.max(0,Math.min(1,(clientX-rect.left)/Math.max(1,rect.width))),
+        Math.max(0,Math.min(1,(clientY-rect.top)/Math.max(1,rect.height)))
+      ]
+    };
+  }
+
+  function updateModeUi(announce=true){
+    const erasing=drawingMode==='erase';
+    modeToggle.classList.toggle('erase-mode',erasing);
+    boardSurface.classList.toggle('erase-mode',erasing);
+    modeBanner.classList.toggle('show',erasing);
+    modeToggle.setAttribute('aria-checked',erasing?'true':'false');
+    modeTitle.textContent=erasing?'消しゴムモード':'SCHEDULE BOARD';
+    eraserModeMark.classList.toggle('active',erasing);
+    eraserModeMark.setAttribute('aria-pressed',erasing?'true':'false');
+    eraserModeMark.setAttribute('aria-label',erasing?'手書きモードに戻す':'消しゴムモードに切り替える');
+    if(!erasing) eraserCursor.classList.remove('show');
+    if(announce) toast(erasing?'消しゴムに切り替えました':'手書きに戻しました');
+  }
+
+  function toggleDrawingMode(){
+    if(MOBILE_VIEW_ONLY) return;
+    drawingMode=drawingMode==='pen'?'erase':'pen';
+    updateModeUi(true);
+  }
+
+  modeToggle.addEventListener('pointerup',e=>{
+    if(!e.isPrimary) return;
+    e.preventDefault();
+    toggleDrawingMode();
+  },{passive:false});
+  modeToggle.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleDrawingMode();}
+  });
+
+  eraserModeMark.addEventListener('pointerdown',e=>{
+    e.stopPropagation();
+  });
+  eraserModeMark.addEventListener('pointerup',e=>{
+    if(!e.isPrimary) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toggleDrawingMode();
+  },{passive:false});
+  eraserModeMark.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){
+      e.preventDefault();
+      e.stopPropagation();
+      toggleDrawingMode();
+    }
+  });
+
+  function stylusEraserPressed(e){
+    return e.pointerType==='pen' && (e.button===5 || (e.buttons & 32)===32);
+  }
+
+  function effectiveTool(e){
+    return drawingMode==='erase' || stylusEraserPressed(e) ? 'erase' : 'pen';
+  }
+
+  function showEraserCursor(clientX,clientY){
+    const rect=boardSurface.getBoundingClientRect();
+    eraserCursor.style.left=(clientX-rect.left)+'px';
+    eraserCursor.style.top=(clientY-rect.top)+'px';
+    eraserCursor.classList.add('show');
+  }
+
+  function beginStroke(pointerId,tool,clientX,clientY){
+    const {point}=canvasPointFromClient(clientX,clientY);
+    activeStroke={
+      pointerId,
+      stroke:{tool,width:tool==='erase'?ERASER_WIDTH:PEN_WIDTH,points:[point]}
+    };
+    drawStroke(configureDrawingContext(),activeStroke.stroke);
+  }
+
+  function appendStrokePoint(e){
+    if(!activeStroke || activeStroke.pointerId!==e.pointerId) return;
+    const {point}=canvasPointFromClient(e.clientX,e.clientY);
+    const points=activeStroke.stroke.points;
+    const prev=points[points.length-1];
+    if(Math.abs(point[0]-prev[0])+Math.abs(point[1]-prev[1])<0.0012) return;
+    points.push(point);
+    drawStroke(configureDrawingContext(),{...activeStroke.stroke,points:[prev,point]});
+  }
+
+  drawingCanvas.addEventListener('contextmenu',e=>e.preventDefault());
+  drawingCanvas.addEventListener('pointerdown',e=>{
+    if(MOBILE_VIEW_ONLY) return;
+    if(drag || activeStroke || !e.isPrimary) return;
+    if(e.pointerType==='mouse' && e.button!==0 && e.button!==5) return;
+    e.preventDefault();
+    try{ drawingCanvas.setPointerCapture(e.pointerId); }catch(_e){}
+    const tool=effectiveTool(e);
+    beginStroke(e.pointerId,tool,e.clientX,e.clientY);
+    if(tool==='erase') showEraserCursor(e.clientX,e.clientY);
+  },{passive:false});
+
+  drawingCanvas.addEventListener('pointermove',e=>{
+    if(MOBILE_VIEW_ONLY) return;
+    if(!e.isPrimary) return;
+    if(activeStroke && activeStroke.pointerId===e.pointerId){
+      appendStrokePoint(e);
+      if(activeStroke.stroke.tool==='erase') showEraserCursor(e.clientX,e.clientY);
+      e.preventDefault();
+      return;
+    }
+    if(drawingMode==='erase' && (e.pointerType==='mouse'||e.pointerType==='pen')){
+      showEraserCursor(e.clientX,e.clientY);
+    }
+  },{passive:false});
+
+  drawingCanvas.addEventListener('pointerleave',()=>{
+    if(!activeStroke) eraserCursor.classList.remove('show');
+  });
+
+  function simplifyPoints(points){
+    if(!Array.isArray(points)||points.length<3) return points||[];
+    const out=[points[0]];
+    for(let i=1;i<points.length-1;i++){
+      const a=out[out.length-1],b=points[i];
+      if(Math.abs(b[0]-a[0])+Math.abs(b[1]-a[1])>=0.0022) out.push(b);
+    }
+    out.push(points[points.length-1]);
+    return out;
+  }
+
+  function finishCanvasPointer(e){
+    if(!activeStroke || activeStroke.pointerId!==e.pointerId) return;
+    activeStroke.stroke.points=simplifyPoints(activeStroke.stroke.points);
+    day().strokes.push(activeStroke.stroke);
+    activeStroke=null;
+    eraserCursor.classList.remove('show');
+    redrawDrawingFromState();
+    markChanged(120);
+  }
+
+  drawingCanvas.addEventListener('pointerup',finishCanvasPointer);
+  drawingCanvas.addEventListener('pointercancel',finishCanvasPointer);
+  drawingCanvas.addEventListener('lostpointercapture',e=>{
+    if(activeStroke && activeStroke.pointerId===e.pointerId) finishCanvasPointer(e);
+  });
+
+  function attachTrayDrag(el){
+    if(MOBILE_VIEW_ONLY) return;
+    el.onpointerdown = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      startDragFromElement(el, {
+        sourceType:el.dataset.type,
+        personId:el.dataset.id || null,
+        value:el.dataset.value || null,
+        fromMagnetId:null
+      }, e, true);
+    };
+  }
+
+  function attachPlacedDrag(el){
+    if(MOBILE_VIEW_ONLY) return;
+    el.onpointerdown = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const m = day().magnets.find(x=>x.id===el.dataset.magnetId);
+      if(!m) return;
+      startDragFromElement(el, {
+        sourceType:'placed', personId:m.personId || null, value:m.value || null,
+        kind:m.kind, fromMagnetId:m.id
+      }, e, false);
+    };
+  }
+
+  function startDragFromElement(el, payload, e, centerOnFirstDrop){
+    const rect = el.getBoundingClientRect();
+    const ghost = el.cloneNode(true);
+    ghost.classList.add('ghost');
+    ghost.style.width = rect.width + 'px';
+    ghost.style.height = rect.height + 'px';
+    ghost.style.minWidth = rect.width + 'px';
+    ghost.style.minHeight = rect.height + 'px';
+    document.body.append(ghost);
+    drag = {
+      ...payload, ghost,
+      dx:centerOnFirstDrop ? rect.width/2 : e.clientX-rect.left,
+      dy:centerOnFirstDrop ? rect.height/2 : e.clientY-rect.top,
+      pointerId:e.pointerId, width:rect.width, height:rect.height,
+      lastX:e.clientX, lastY:e.clientY, lastBoardPos:null
+    };
+    moveGhost(e.clientX,e.clientY);
+  }
+
+  function moveGhost(x,y){
+    if(!drag) return;
+    drag.ghost.style.left=(x-drag.dx)+'px';
+    drag.ghost.style.top=(y-drag.dy)+'px';
+  }
+  function pointInBoard(x,y){
+    const rect=boardSurface.getBoundingClientRect();
+    return x>=rect.left && x<=rect.right && y>=rect.top && y<=rect.bottom;
+  }
+  function pointInTray(x,y){ return !!document.elementFromPoint(x,y)?.closest('.tray'); }
+  function boardPoint(x,y){
+    const rect=boardSurface.getBoundingClientRect();
+    const maxX=Math.max(0,rect.width-drag.width);
+    const maxY=Math.max(0,rect.height-drag.height);
+    let rx=x-rect.left-drag.dx;
+    let ry=y-rect.top-drag.dy;
+    rx=Math.max(0,Math.min(rx,maxX));
+    ry=Math.max(0,Math.min(ry,maxY));
+    return {
+      x:Number(((rx + drag.width/2)/Math.max(1,rect.width)).toFixed(6)),
+      y:Number(((ry + drag.height/2)/Math.max(1,rect.height)).toFixed(6)),
+      coordinateMode:'centerRatio'
+    };
+  }
+
+  document.addEventListener('pointermove',e=>{
+    if(MOBILE_VIEW_ONLY || !drag) return;
+    drag.lastX=e.clientX; drag.lastY=e.clientY;
+    moveGhost(e.clientX,e.clientY);
+    drag.lastBoardPos=pointInBoard(e.clientX,e.clientY)?boardPoint(e.clientX,e.clientY):null;
+  },{passive:false});
+
+  document.addEventListener('pointerup',e=>{
+    if(MOBILE_VIEW_ONLY || !drag) return;
+    const currentDrag=drag;
+    const dropX=Number.isFinite(e.clientX)?e.clientX:drag.lastX;
+    const dropY=Number.isFinite(e.clientY)?e.clientY:drag.lastY;
+    const pos=drag.lastBoardPos || (pointInBoard(dropX,dropY)?boardPoint(dropX,dropY):null);
+    let changed=false;
+    if(pos){ placeMagnetAt(pos); changed=true; }
+    else if(pointInTray(dropX,dropY)){ returnMagnetToTray(); changed=currentDrag.sourceType==='placed'; }
+    currentDrag.ghost.remove();
+    drag=null;
+    render();
+    if(changed) markChanged(80);
+    if(currentDrag.sourceType==='status' && ['1F','3F','4F','5F','6F'].includes(currentDrag.value)){
+      floorPicker?.classList.remove('open');
+      floorPickerToggle?.setAttribute('aria-expanded','false');
+    }
+  });
+
+  function placeMagnetAt(pos){
+    if(drag.sourceType==='placed'){
+      const m=day().magnets.find(x=>x.id===drag.fromMagnetId);
+      if(m){m.x=pos.x;m.y=pos.y;m.coordinateMode='centerRatio';}
+      return;
+    }
+    if(drag.sourceType==='person'){
+      day().magnets=day().magnets.filter(m=>!(m.kind==='person'&&m.personId===drag.personId));
+      day().magnets.push({id:'m'+Date.now()+Math.random().toString(16).slice(2),kind:'person',personId:drag.personId,x:pos.x,y:pos.y,coordinateMode:'centerRatio'});
+      return;
+    }
+    if(drag.sourceType==='status'){
+      day().magnets.push({id:'m'+Date.now()+Math.random().toString(16).slice(2),kind:'status',value:drag.value,x:pos.x,y:pos.y,coordinateMode:'centerRatio'});
+    }
+  }
+
+  function returnMagnetToTray(){
+    if(drag.sourceType==='placed') day().magnets=day().magnets.filter(m=>m.id!==drag.fromMagnetId);
+  }
+
+  $('#undoBtn').onclick=()=>{
+    if(MOBILE_VIEW_ONLY) return;
+    if(day().strokes.length){day().strokes.pop();markChanged();redrawDrawingFromState();toast('1つ前の手書きを戻しました');}
+    else toast('戻せる手書きがありません');
+  };
+
+  function clearDrawingCanvas(){
+    day().strokes=[];
+    redrawDrawingFromState();
+    markChanged();
+  }
+
+  $('#clearDrawingBtn').onclick=()=>{
+    if(MOBILE_VIEW_ONLY) return;
+    if(confirm('手書きした内容をすべて消去しますか？\nマグネットの配置と氏名一覧は残ります。')){
+      clearDrawingCanvas(); toast('手書き分をすべて消去しました');
+    }
+  };
+
+  $('#resetPeopleBtn').onclick=()=>{
+    if(MOBILE_VIEW_ONLY) return;
+    day().magnets=day().magnets.filter(m=>m.kind!=='person');
+    markChanged(); render();
+  };
+
+  $('#addPersonBtn').onclick=()=>{
+    if(MOBILE_VIEW_ONLY) return;
+    modal.classList.add('show'); $('#personName').value='';
+    setTimeout(()=>$('#personName').focus(),50);
+  };
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>modal.classList.remove('show'));
+  $('#savePersonBtn').onclick=()=>{
+    const name=$('#personName').value.trim();
+    if(!name) return;
+    state.people.push({id:'p'+Date.now()+Math.random().toString(36).slice(2,6),name});
+    modal.classList.remove('show'); markChanged(); render();
+  };
+  $('#personName').addEventListener('keydown',e=>{if(e.key==='Enter')$('#savePersonBtn').click();});
+
+  $('#fullBtn').onclick=async()=>{
+    try{
+      if(!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      else await document.exitFullscreen();
+    }catch(e){}
+  };
+
+  floorPickerToggle?.addEventListener('pointerup',e=>{
+    if(!e.isPrimary) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const open=!floorPicker.classList.contains('open');
+    floorPicker.classList.toggle('open',open);
+    floorPickerToggle.setAttribute('aria-expanded',open?'true':'false');
+  },{passive:false});
+  document.addEventListener('pointerdown',e=>{
+    if(floorPicker?.classList.contains('open') && !e.target.closest('#floorPicker')){
+      floorPicker.classList.remove('open');
+      floorPickerToggle.setAttribute('aria-expanded','false');
+    }
+  });
+
+  document.querySelectorAll('.magnet-box .status-chip').forEach(attachTrayDrag);
+  window.addEventListener('resize',scheduleGeometryRefresh);
+  document.addEventListener('fullscreenchange',scheduleGeometryRefresh);
+  if(window.ResizeObserver){
+    const boardResizeObserver=new ResizeObserver(scheduleGeometryRefresh);
+    boardResizeObserver.observe(boardSurface);
+  }
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible') loadRemote();
+  });
+  window.addEventListener('beforeunload',()=>{
+    if(isDirty) saveRemote();
+  });
+  document.addEventListener('dblclick',e=>{
+    if(MOBILE_VIEW_ONLY) return;
+    const chip=e.target.closest('.floating-chip');
+    if(!chip) return;
+    day().magnets=day().magnets.filter(m=>m.id!==chip.dataset.magnetId);
+    markChanged(); render();
+  });
+
+  syncBadge.title='クリックすると同期を再試行します';
+  syncBadge.style.cursor='pointer';
+  syncBadge.onclick=()=>loadRemote({initial:true});
+  if(MOBILE_VIEW_ONLY){
+    drawingMode='pen';
+    modeToggle.removeAttribute('tabindex');
+    modeToggle.setAttribute('aria-disabled','true');
+    eraserModeMark.removeAttribute('tabindex');
+    document.querySelectorAll('button, .eraser-mode-mark').forEach(el=>{
+      if(el.id!=='fullBtn') el.setAttribute('aria-disabled','true');
+    });
+    setSyncStatus('loading','● 接続中');
+  }
+  clearLegacySharedCaches();
+  updateModeUi(false);
+  render();
+  setSyncStatus('loading', MOBILE_VIEW_ONLY ? '● 接続中' : '最新データ確認中');
+  setTimeout(()=>loadRemote({initial:true}), 50);
+  pollTimer=setInterval(()=>loadRemote(),POLL_INTERVAL_MS);
+})();
+</script>
+
+</body>
+</html>
